@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Connection Cost Planner</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+    <div class="container">
+        <div class="header">
+            <h1>✈️ Flight Connection Cost Planner</h1>
+            <p>Compare flight routes across multiple airlines using advanced algorithms</p>
+        </div>
+
+        <!-- Database Configuration -->
+        <div class="card" id="dbConfigCard">
+            <h2>Database Configuration</h2>
+            
+            <div id="connectionStatus" class="hidden">
+                <span class="connection-status connected">✓ Connected to Database</span>
+                <button class="btn btn-danger" onclick="disconnectDatabase()" style="width: auto; padding: 10px 20px; font-size: 0.9em;">Disconnect & Reconfigure</button>
+            </div>
+
+            <div id="connectionForm">
+                <div class="form-group">
+                    <label>Supabase URL</label>
+                    <input type="text" id="supabaseUrl" placeholder="https://your-project.supabase.co">
+                </div>
+                <div class="form-group">
+                    <label>Supabase API Key (anon/public)</label>
+                    <input type="password" id="supabaseKey" placeholder="Your anon key">
+                </div>
+                <button class="btn" onclick="connectDatabase()">Connect to Database</button>
+            </div>
+
+            <div class="success-msg" id="dbSuccess"></div>
+            <div class="error-msg" id="dbError"></div>
+        </div>
+
+        <!-- City & Graph Setup -->
+        <div class="card hidden" id="graphSetupCard">
+            <h2>Setup Cities & Flight Costs</h2>
+            
+            <div class="form-group">
+                <label>Number of Cities</label>
+                <input type="number" id="numCities" min="2" max="10" value="3" placeholder="Enter number of cities (2-10)">
+            </div>
+
+            <div class="form-group">
+                <label>City Names (comma-separated)</label>
+                <input type="text" id="cityNames" placeholder="Mumbai, Delhi, Bangalore">
+                <small style="color: #666; display: block; margin-top: 5px;">Example: Mumbai, Delhi, Bangalore, Chennai</small>
+            </div>
+
+            <button class="btn btn-success" onclick="generateMatrix()">Generate Cost Matrix</button>
+            
+            <div id="matrixSection" class="hidden" style="margin-top: 30px;">
+                <h3 style="color: #333; margin-bottom: 15px;">Enter Flight Costs Between Cities</h3>
+                <p style="color: #666; margin-bottom: 15px;">Use 99999 or INF for no direct flight. Diagonal cells are auto-set to 0.</p>
+                <div class="matrix-grid" id="matrixContainer"></div>
+                <button class="btn" onclick="saveGraph()" style="margin-top: 20px;">Save Graph & Proceed</button>
+            </div>
+
+            <div class="error-msg" id="graphError"></div>
+        </div>
+
+        <!-- Calculate Routes -->
+        <div class="card hidden" id="calculateCard">
+            <h2>Calculate Shortest Routes by Airlines</h2>
+            
+            <div class="warning-msg" id="negativeEdgeWarning" style="display: none;">
+                ⚠️ One or more airlines have negative edges. Dijkstra algorithm is not applicable for those!
+            </div>
+
+            <div class="form-group">
+                <label>Select Airlines to Compare</label>
+                <div class="airline-selector">
+                    <div class="airline-checkbox">
+                        <input type="checkbox" id="airline_indigo" value="IndiGo" checked>
+                        <label for="airline_indigo">IndiGo</label>
+                    </div>
+                    <div class="airline-checkbox">
+                        <input type="checkbox" id="airline_airindia" value="Air India" checked>
+                        <label for="airline_airindia">Air India</label>
+                    </div>
+                    <div class="airline-checkbox">
+                        <input type="checkbox" id="airline_spicejet" value="SpiceJet" checked>
+                        <label for="airline_spicejet">SpiceJet</label>
+                    </div>
+                    <div class="airline-checkbox">
+                        <input type="checkbox" id="airline_vistara" value="Vistara" checked>
+                        <label for="airline_vistara">Vistara</label>
+                    </div>
+                    <div class="airline-checkbox">
+                        <input type="checkbox" id="airline_goair" value="GoAir" checked>
+                        <label for="airline_goair">GoAir</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Algorithm</label>
+                    <select id="algorithm">
+                        <option value="dijkstra">Dijkstra (Positive weights only)</option>
+                        <option value="bellman-ford">Bellman-Ford (Handles negative weights)</option>
+                        <option value="floyd-warshall">Floyd-Warshall (All-pairs shortest path)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Source City</label>
+                    <select id="sourceCity"></select>
+                </div>
+            </div>
+
+            <button class="btn" onclick="calculateAirlineRoutes()">Calculate Routes for Selected Airlines</button>
+            <button class="btn btn-secondary" onclick="viewStoredResults()">View All Database Records</button>
+            
+            <div class="error-msg" id="calcError"></div>
+            <div class="success-msg" id="calcSuccess"></div>
+        </div>
+
+        <!-- Airline Results Display -->
+        <div class="card hidden" id="airlineResultsCard">
+            <h2>Flight Routes Comparison</h2>
+            <div id="bestDealBanner" class="best-deal-banner hidden"></div>
+            <div class="airline-results-grid" id="airlineResultsGrid"></div>
+        </div>
+
+        <!-- Database Records -->
+        <div class="card hidden" id="databaseCard">
+            <h2>Stored Database Records</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Airline</th>
+                            <th>Source</th>
+                            <th>Destination</th>
+                            <th>Cost</th>
+                            <th>Algorithm</th>
+                        </tr>
+                    </thead>
+                    <tbody id="databaseTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+</body>
+</html>
